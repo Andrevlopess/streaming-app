@@ -1,0 +1,10 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "streaming-app-prod"
+resolve_s3 = true
+s3_prefix = "streaming-app-prod"
+region = "us-east-1"
+profile = "andrevlopes"
+capabilities = "CAPABILITY_IAM"
+image_repositories = []

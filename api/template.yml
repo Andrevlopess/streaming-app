@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Streaming app API
+
+Globals:
+  Function:
+    Timeout: 15
+    CodeUri: src
+    Runtime: nodejs22.x
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        BUCKET_NAME: !Ref ContentsBucket
+
+Resources:
+  ContentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-contents-bucket"
+
+  UploadVideoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/functions/s3-handler.handler
+      FunctionName: !Sub ${AWS::StackName}-upload-content
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins:
+            - "*"
+          AllowHeaders:
+            - "*"
+          AllowMethods:
+            - POST
+        Policies:
+          - S3ReadPolicy:
+              BucketName: !Ref ContentsBucket
+          - S3WritePolicy:
+              BucketName: !Ref ContentsBucket
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        TreeShaking: true
+        Bundle: true
+        Sourcemap: false
+        EntryPoints:
+          - functions/s3-handler.ts # Entry point for the Lambda function
+
+Outputs:
+  UploadVideoFunction:
+    Description: UploadVideoFunction Lambda Function ARN
+    Value: !GetAtt UploadVideoFunction.Arn
+  UploadVideoFunctionIamRole:
+    Description: Implicit IAM Role created for UploadVideoFunction
+    Value: !GetAtt UploadVideoFunctionRole.Arn

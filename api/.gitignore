@@ -1,0 +1,9 @@
+node_modules/
+functions/*/dist/
+*.js.map
+.aws-sam/
+build/
+.DS_Store
+.env
+.env.local
+sam-tests/

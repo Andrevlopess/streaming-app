@@ -1,0 +1,21 @@
+{
+  "name": "lambda-s3-function",
+  "version": "1.0.0",
+  "description": "Lambda function with S3 integration",
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.js",
+    "dev": "node esbuild.js --watch"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.565.0",
+    "@aws-sdk/s3-request-presigner": "^3.1047.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.131",
+    "@types/node": "^20.10.6",
+    "esbuild": "^0.20.2",
+    "typescript": "^5.3.3"
+  }
+}
