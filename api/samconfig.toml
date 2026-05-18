@@ -8,3 +8,9 @@ region = "us-east-1"
 profile = "andrevlopes"
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
+
+[default.sync.parameters]
+stack_name = "streaming-app-prod"
+region = "us-east-1"
+profile = "andrevlopes"
+watch = true

@@ -12,12 +12,33 @@ Globals:
     Environment:
       Variables:
         BUCKET_NAME: !Ref ContentsBucket
+        TABLE_NAME: !Ref ContentsTable
 
 Resources:
+  ContentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      TableName: !Sub "${AWS::StackName}-contents-table"
+      AttributeDefinitions:
+        - AttributeName: fileKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: fileKey
+          KeyType: HASH
+
   ContentsBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "${AWS::StackName}-contents-bucket"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - PUT
+            AllowedOrigins:
+              - 'http://localhost:5173'
 
   UploadVideoFunction:
     Type: AWS::Serverless::Function
@@ -33,11 +54,13 @@ Resources:
             - "*"
           AllowMethods:
             - POST
-        Policies:
-          - S3ReadPolicy:
-              BucketName: !Ref ContentsBucket
-          - S3WritePolicy:
-              BucketName: !Ref ContentsBucket
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ContentsBucket
+        - S3WritePolicy:
+            BucketName: !Ref ContentsBucket
+        - DynamoDBWritePolicy:
+            TableName: !Ref ContentsTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
