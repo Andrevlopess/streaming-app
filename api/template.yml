@@ -37,13 +37,15 @@ Resources:
               - '*'
             AllowedMethods:
               - PUT
+            ExposedHeaders: 
+              - ETag
             AllowedOrigins:
               - 'http://localhost:5173'
 
-  UploadVideoFunction:
+  UploadContentFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/functions/s3-handler.handler
+      Handler: src/functions/http/getSignedUrl.handler
       FunctionName: !Sub ${AWS::StackName}-upload-content
       FunctionUrlConfig:
         AuthType: NONE
@@ -69,12 +71,123 @@ Resources:
         Bundle: true
         Sourcemap: false
         EntryPoints:
-          - functions/s3-handler.ts # Entry point for the Lambda function
+          - functions/http/getSignedUrl.ts 
+
+  InitiateMPUFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/functions/http/initiateMPU.handler
+      FunctionName: !Sub ${AWS::StackName}-initiate-mpu
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins:
+            - "*"
+          AllowHeaders:
+            - "*"
+          AllowMethods:
+            - POST
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ContentsBucket
+        - S3WritePolicy:
+            BucketName: !Ref ContentsBucket
+        - DynamoDBWritePolicy:
+            TableName: !Ref ContentsTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        TreeShaking: true
+        Bundle: true
+        Sourcemap: false
+        EntryPoints:
+          - functions/http/initiateMPU.ts 
+
+  CompleteMPUFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/functions/http/completeMPU.handler
+      FunctionName: !Sub ${AWS::StackName}-complete-mpu
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins:
+            - "*"
+          AllowHeaders:
+            - "*"
+          AllowMethods:
+            - POST
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ContentsBucket
+        - S3WritePolicy:
+            BucketName: !Ref ContentsBucket
+        - DynamoDBWritePolicy:
+            TableName: !Ref ContentsTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        TreeShaking: true
+        Bundle: true
+        Sourcemap: false
+        EntryPoints:
+          - functions/http/completeMPU.ts 
+
+  AbortMPUFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/functions/http/abortMPU.handler
+      FunctionName: !Sub ${AWS::StackName}-abort-mpu
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins:
+            - "*"
+          AllowHeaders:
+            - "*"
+          AllowMethods:
+            - POST
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref ContentsBucket
+        - DynamoDBWritePolicy:
+            TableName: !Ref ContentsTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        TreeShaking: true
+        Bundle: true
+        Sourcemap: false
+        EntryPoints:
+          - functions/http/abortMPU.ts 
+
+  UploadedContentTrigger:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/functions/s3/uploadedContentTrigger.handler
+      FunctionName: !Sub ${AWS::StackName}-uploaded-content-trigger
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ContentsBucket
+        - DynamoDBWritePolicy:
+            TableName: !Ref ContentsTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        TreeShaking: true
+        Bundle: true
+        Sourcemap: false
+        EntryPoints:
+          - functions/s3/uploadedContentTrigger.ts
 
 Outputs:
-  UploadVideoFunction:
-    Description: UploadVideoFunction Lambda Function ARN
-    Value: !GetAtt UploadVideoFunction.Arn
-  UploadVideoFunctionIamRole:
-    Description: Implicit IAM Role created for UploadVideoFunction
-    Value: !GetAtt UploadVideoFunctionRole.Arn
+  UploadContentFunction:
+    Description: UploadContentFunction Lambda Function ARN
+    Value: !GetAtt UploadContentFunction.Arn
+  UploadContentFunctionIamRole:
+    Description: Implicit IAM Role created for UploadContentFunction
+    Value: !GetAtt UploadContentFunctionRole.Arn

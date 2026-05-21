@@ -15,7 +15,7 @@ export async function handler(event: LambdaFunctionURLEvent) {
     const body = JSON.parse(event.body || "{}");
 
     const parsed = UploadSchema.parse(body);
-    const fileKey = `${randomUUID()}-${parsed.fileName}`;
+    const fileKey = `uploads/${randomUUID()}-${parsed.fileName}`;
 
     const putObjectCommand = new PutObjectCommand({
       Bucket: env.BUCKET_NAME,
@@ -26,16 +26,18 @@ export async function handler(event: LambdaFunctionURLEvent) {
       Item: {
         fileKey,
         originalFileName: parsed.fileName,
+        status: "pending",
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
       },
     });
 
-    const signedUrl = await getSignedUrl(s3Client, putObjectCommand, { expiresIn: 3600 });
-    await dynamoClient.send(putItemCommand);
+    const signe dUrl = await getSignedUrl(s3Client, putObjectCommand, { expiresIn: 3600 });
+    await dyna moClient.send(putItemCommand);
 
     return response(200, { success: true, signedUrl });
   } catch (error) {
     console.error(error);
-    
+
     if (error instanceof ZodError) {
       return response(400, {
         success: false,
