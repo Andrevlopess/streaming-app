@@ -1,13 +1,14 @@
 import { Loader2, PackageOpen, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 import { useDropzone } from "react-dropzone"
-import { Button } from "./components/ui/button"
-import { cn } from "./lib/utils"
-import { getPresignedUrl } from "./services/getPresignedUrl"
-import { uploadFile } from "./services/uploadFile"
-import { Progress } from "./components/ui/progress"
 import { toast } from "sonner"
+import { Button } from "./components/ui/button"
+import { Progress } from "./components/ui/progress"
 import { Toaster } from "./components/ui/sonner"
+import { cn, mbToBytes } from "./lib/utils"
+import { completeMPU } from "./services/completeMPU"
+import { initiateMPU } from "./services/initiateMPU"
+import { uploadChunk } from "./services/uploadChunk"
 interface Upload {
   file: File
   progress: number
@@ -31,40 +32,88 @@ export function App() {
     setUploads(newState)
   }
 
+  async function handleMultiPartUpload(file: File) {
+    try {
+      setIsLoading(true)
+
+      const chunkSize = mbToBytes(5)
+      const totalChunks = Math.ceil(file.size / chunkSize)
+
+      const { fileKey, uploadId, parts } = await initiateMPU({
+        fileName: file.name,
+        totalChunks,
+      })
+
+      const uploadedeParts = await Promise.all(
+        parts.map(async ({ url, partNumber }, index) => {
+          const chunkStart = index * chunkSize
+          const chunkEnd = Math.min((index + 1) * chunkSize, file.size)
+          const chunk = file.slice(chunkStart, chunkEnd)
+
+
+          const { ETag } = await uploadChunk({ signedUrl: url, chunk })
+         
+          return {
+            partNumber: partNumber,
+            ETag,
+          }
+        })
+      )
+
+      await completeMPU({
+        fileKey,
+        uploadId,
+        parts: uploadedeParts,
+      })
+      console.log(fileKey, uploadId, parts)
+    } catch (error) {
+      console.error("Error occurred while initiating multipart upload:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   async function handleUpload() {
     try {
       setIsLoading(true)
 
-      const urls = await Promise.all(
-        uploads.map(async ({ file }) => ({
-          url: await getPresignedUrl(file),
-          file,
-        }))
-      )
+      const mpuPromises = uploads.map(({ file }) => handleMultiPartUpload(file))
 
-      const uploadsResults = await Promise.allSettled(
-        urls.map(async ({ url, file }, index) =>
-          uploadFile(file, url, (progress) => {
-            setUploads((prevUploads) => {
-              const newState = [...prevUploads]
-              newState[index] = { ...newState[index], progress }
-              return newState
-            })
-          })
-        )
-      )
+      const uploadsMPUs = await Promise.allSettled(mpuPromises)
 
-      uploadsResults.forEach((result, index) => {
-        if (result.status === "rejected") {
-          console.log(
-            `Failed to upload file ${uploads[index].file.name}:`,
-            result.reason
-          )
-        } else {
-          console.log(`File ${uploads[index].file.name} uploaded successfully!`)
-        }
-      })
-      setUploads([])
+      console.log(uploadsMPUs)
+
+      // const largeFiles = uploads.filter(({ file }) => file.size > mbToBytes(10));
+      // const urls = await Promise.all(
+      //   uploads.map(async ({ file }) => ({
+      //     url: await getPresignedUrl(file),
+      //     file,
+      //   }))
+      // )
+
+      // const uploadsResults = await Promise.allSettled(
+      //   urls.map(async ({ url, file }, index) =>
+      //     uploadFile(file, url, (progress) => {
+      //       setUploads((prevUploads) => {
+      //         const newState = [...prevUploads]
+      //         newState[index] = { ...newState[index], progress }
+      //         return newState
+      //       })
+      //     })
+      //   )
+      // )
+
+      // uploadsResults.forEach((result, index) => {
+      //   if (result.status === "rejected") {
+      //     console.log(
+      //       `Failed to upload file ${uploads[index].file.name}:`,
+      //       result.reason
+      //     )
+      //   } else {
+      //     console.log(`File ${uploads[index].file.name} uploaded successfully!`)
+      //   }
+      // })
+      // setUploads([])
       toast.success("Upload completed!")
     } catch (error) {
       console.error("Error occurred while uploading files:", error)
@@ -73,10 +122,9 @@ export function App() {
     }
   }
 
-  
   return (
-    <div className="flex min-h-svh p-6">
-      <Toaster/>
+    <div className="flex min-h-svh items-center justify-center p-6">
+      <Toaster />
       <div className="w-full max-w-xl">
         <div
           {...getRootProps()}
@@ -87,10 +135,8 @@ export function App() {
         >
           <input {...getInputProps()} />
           <PackageOpen className="mb-2 size-10 stroke-1" />
-          <span>Drop files here</span>
-          <small className="text-muted-foreground">
-            Apenas vídeos até 50mb
-          </small>
+          <span className="font-semibold">Drag & Drop files here</span>
+          <small className="text-muted-foreground">Max file size 10MB.</small>
         </div>
 
         {uploads.length > 0 && (

@@ -7,7 +7,7 @@ interface GetPresignedUrlResponse {
 
 export async function getPresignedUrl(file: File) {
   const { data } = await axios.post<GetPresignedUrlResponse>(
-    "https://4r5muwxabijej6k5qkd3y43no40gagdq.lambda-url.us-east-1.on.aws/",
+    "https://6onk62eiwp6ohnzjrn5sluhotu0uggia.lambda-url.us-east-1.on.aws/",
     {
       fileName: file.name,
     }
