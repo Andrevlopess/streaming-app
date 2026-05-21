@@ -6,6 +6,8 @@ import type { S3Event } from "aws-lambda";
 
 export async function handler(event: S3Event) {
   try {
+    console.log(event);
+    
     const commands = event.Records.map((record) => {
       return new UpdateCommand({
         TableName: env.TABLE_NAME,

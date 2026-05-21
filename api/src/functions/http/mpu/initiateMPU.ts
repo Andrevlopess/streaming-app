@@ -1,7 +1,9 @@
+import { dynamoClient } from "@/clients/dynamoClient.js";
 import { s3Client } from "@/clients/s3Client.js";
 import { response } from "@/utils/response.js";
 import { InitMPUSchema } from "@/validation/InitMPUSchema.js";
 import { CreateMultipartUploadCommand, UploadPartCommand } from "@aws-sdk/client-s3";
+import { PutCommand } from "@aws-sdk/lib-dynamodb";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { LambdaFunctionURLEvent } from "aws-lambda";
 import { randomUUID } from "crypto";
@@ -12,8 +14,8 @@ export async function handler(event: LambdaFunctionURLEvent) {
   try {
     const body = JSON.parse(event.body || "{}");
 
-    const parsed = InitMPUSchema.parse(body);
-    const fileKey = `uploads/${randomUUID()}-${parsed.fileName}`;
+    const { fileName, totalChunks } = InitMPUSchema.parse(body);
+    const fileKey = `uploads/${randomUUID()}-${fileName}`;
 
     const createMultipartUploadCommand = new CreateMultipartUploadCommand({
       Bucket: env.BUCKET_NAME,
@@ -27,7 +29,7 @@ export async function handler(event: LambdaFunctionURLEvent) {
     }
 
     const signedUrlPromises: Promise<string>[] = [];
-    for (let i = 1; i <= parsed.totalChunks; i++) {
+    for (let i = 1; i <= totalChunks; i++) {
       const uploadPartCommand = new UploadPartCommand({
         Bucket: env.BUCKET_NAME,
         Key: fileKey,
@@ -38,6 +40,18 @@ export async function handler(event: LambdaFunctionURLEvent) {
       signedUrlPromises.push(getSignedUrl(s3Client, uploadPartCommand, { expiresIn: 3600 }));
     }
     const partsUrls = await Promise.all(signedUrlPromises);
+
+    const putItemCommand = new PutCommand({
+      TableName: env.TABLE_NAME,
+      Item: {
+        fileKey,
+        originalFileName: fileName,
+        status: "pending",
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      },
+    });
+
+    await dynamoClient.send(putItemCommand);
 
     return response(201, {
       fileKey,

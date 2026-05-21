@@ -40,22 +40,26 @@ Resources:
             ExposedHeaders: 
               - ETag
             AllowedOrigins:
-              - 'http://localhost:5173'
+              - http://localhost:5173
 
+  ContentsHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: !Sub ${AWS::StackName}-contents-api
+      CorsConfiguration:
+          AllowOrigins:
+            - http://localhost:5173
+          AllowHeaders:
+            - "*"
+          AllowMethods:
+            - POST
+            - GET
+    
   UploadContentFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: src/functions/http/getSignedUrl.handler
       FunctionName: !Sub ${AWS::StackName}-upload-content
-      FunctionUrlConfig:
-        AuthType: NONE
-        Cors:
-          AllowOrigins:
-            - "*"
-          AllowHeaders:
-            - "*"
-          AllowMethods:
-            - POST
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ContentsBucket
@@ -63,6 +67,13 @@ Resources:
             BucketName: !Ref ContentsBucket
         - DynamoDBWritePolicy:
             TableName: !Ref ContentsTable
+      Events:
+        GetSignedUrl:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ContentsHttpApi
+            Path: /upload
+            Method: post
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -76,17 +87,15 @@ Resources:
   InitiateMPUFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/functions/http/initiateMPU.handler
+      Handler: src/functions/http/mpu/initiateMPU.handler
       FunctionName: !Sub ${AWS::StackName}-initiate-mpu
-      FunctionUrlConfig:
-        AuthType: NONE
-        Cors:
-          AllowOrigins:
-            - "*"
-          AllowHeaders:
-            - "*"
-          AllowMethods:
-            - POST
+      Events:
+        InitiateMPU:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ContentsHttpApi
+            Path: /initiate-mpu
+            Method: post
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ContentsBucket
@@ -102,22 +111,20 @@ Resources:
         Bundle: true
         Sourcemap: false
         EntryPoints:
-          - functions/http/initiateMPU.ts 
+          - functions/http/mpu/initiateMPU.ts 
 
   CompleteMPUFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/functions/http/completeMPU.handler
+      Handler: src/functions/http/mpu/completeMPU.handler
       FunctionName: !Sub ${AWS::StackName}-complete-mpu
-      FunctionUrlConfig:
-        AuthType: NONE
-        Cors:
-          AllowOrigins:
-            - "*"
-          AllowHeaders:
-            - "*"
-          AllowMethods:
-            - POST
+      Events:
+        CompleteMPU:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ContentsHttpApi
+            Path: /complete-mpu
+            Method: post
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ContentsBucket
@@ -133,22 +140,20 @@ Resources:
         Bundle: true
         Sourcemap: false
         EntryPoints:
-          - functions/http/completeMPU.ts 
+          - functions/http/mpu/completeMPU.ts 
 
   AbortMPUFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/functions/http/abortMPU.handler
+      Handler: src/functions/http/mpu/abortMPU.handler
       FunctionName: !Sub ${AWS::StackName}-abort-mpu
-      FunctionUrlConfig:
-        AuthType: NONE
-        Cors:
-          AllowOrigins:
-            - "*"
-          AllowHeaders:
-            - "*"
-          AllowMethods:
-            - POST
+      Events:
+        AbortMPU:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ContentsHttpApi
+            Path: /abort-mpu
+            Method: post
       Policies:
         - S3WritePolicy:
             BucketName: !Ref ContentsBucket
@@ -162,7 +167,37 @@ Resources:
         Bundle: true
         Sourcemap: false
         EntryPoints:
-          - functions/http/abortMPU.ts 
+          - functions/http/mpu/abortMPU.ts 
+
+  FindAndDeleteMPUFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/functions/http/mpu/findAndDeleteMPUs.handler
+      FunctionName: !Sub ${AWS::StackName}-find-and-delete-mpus
+      FunctionUrlConfig:
+        AuthType: NONE
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - s3:ListBucketMultipartUploads
+            Resource: !GetAtt ContentsBucket.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - s3:AbortMultipartUpload
+            Resource: !Sub "${ContentsBucket.Arn}/*"
+        - DynamoDBWritePolicy:
+            TableName: !Ref ContentsTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        TreeShaking: true
+        Bundle: true
+        Sourcemap: false
+        EntryPoints:
+          - functions/http/mpu/findAndDeleteMPUs.ts
 
   UploadedContentTrigger:
     Type: AWS::Serverless::Function

@@ -31,8 +31,8 @@ export async function handler(event: LambdaFunctionURLEvent) {
       },
     });
 
-    const signe dUrl = await getSignedUrl(s3Client, putObjectCommand, { expiresIn: 3600 });
-    await dyna moClient.send(putItemCommand);
+    const signedUrl = await getSignedUrl(s3Client, putObjectCommand, { expiresIn: 3600 });
+    await dynamoClient.send(putItemCommand);
 
     return response(200, { success: true, signedUrl });
   } catch (error) {

@@ -1,7 +1,9 @@
+import { dynamoClient } from "@/clients/dynamoClient.js";
 import { s3Client } from "@/clients/s3Client.js";
 import { response } from "@/utils/response.js";
 import { CompleteMPUSchema } from "@/validation/CompleteMPUSchema.js";
 import { CompleteMultipartUploadCommand } from "@aws-sdk/client-s3";
+import { PutCommand } from "@aws-sdk/lib-dynamodb";
 import type { LambdaFunctionURLEvent } from "aws-lambda";
 import { env } from "process";
 import { ZodError } from "zod";
@@ -26,8 +28,9 @@ export async function handler(event: LambdaFunctionURLEvent) {
 
     await s3Client.send(createMultipartUploadCommand);
 
-    return response(204);
+   
 
+    return response(204);
   } catch (error) {
     console.error(error);
 
