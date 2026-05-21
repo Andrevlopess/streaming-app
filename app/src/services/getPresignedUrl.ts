@@ -1,4 +1,4 @@
-import axios from "axios"
+import { api } from "@/lib/api"
 
 interface GetPresignedUrlResponse {
   signedUrl: string
@@ -6,8 +6,8 @@ interface GetPresignedUrlResponse {
 }
 
 export async function getPresignedUrl(file: File) {
-  const { data } = await axios.post<GetPresignedUrlResponse>(
-    "https://6onk62eiwp6ohnzjrn5sluhotu0uggia.lambda-url.us-east-1.on.aws/",
+  const { data } = await api.post<GetPresignedUrlResponse>(
+    "/upload",
     {
       fileName: file.name,
     }

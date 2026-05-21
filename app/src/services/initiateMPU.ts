@@ -1,5 +1,5 @@
+import { api } from "@/lib/api"
 import axios from "axios"
-
 
 export interface MPUPart {
   partNumber: number
@@ -20,12 +20,9 @@ export async function initiateMPU({
   fileName,
   totalChunks,
 }: InitiateMPUParams) {
-  const { data } = await axios.post<InitiateMPUResponse>(
-    "https://76mce5eramy6qvjkdflhxgin7y0dhulr.lambda-url.us-east-1.on.aws/",
-    {
-      fileName,
-      totalChunks,
-    }
-  )
+  const { data } = await api.post<InitiateMPUResponse>("/initiate-mpu", {
+    fileName,
+    totalChunks,
+  })
   return data
 }

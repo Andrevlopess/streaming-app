@@ -1,4 +1,4 @@
-import axios from "axios"
+import { api } from "@/lib/api"
 
 interface UploadedPart {
   partNumber: number
@@ -12,8 +12,8 @@ interface CompleteMPUParams {
 }
 
 export async function completeMPU({ fileKey, parts, uploadId }: CompleteMPUParams) {
-  const { data } = await axios.post(
-    "https://uvvjx7ffh5yw75lbwfpi45mz5e0nlsiw.lambda-url.us-east-1.on.aws/",
+  const { data } = await api.post(
+    "/complete-mpu",
     {
       fileKey,
       parts,
